@@ -195,7 +195,8 @@
       "invoiceMonth": "2026-10",
       "paymentMethod": "pix",
       "paymentDate": "2026-10-16",
-      "invoicePaymentKey": "demo-card:2026-10"
+      "invoicePaymentKey": "demo-card:2026-10",
+      "purchaseId": "cartao-0"
     }
   ],
   "cards": [
