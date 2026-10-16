@@ -200,7 +200,7 @@ async function saveEntry(form){if(!checkForm(form))return;const button=form.quer
   data.status=method==='pending'?(data.status||'pending'):'paid';data.paymentDate=data.status==='paid'?data.date:'';
  }
 if(previous)for(const k of ['scheduleId','installmentGroup','invoicePaymentKey'])if(previous[k])data[k]=previous[k];
- 
+
  if(previous?.invoicePaymentKey&&(data.type!=='expense'||data.cardId)){formError(form,'O pagamento de fatura deve ser uma saída em dinheiro, débito ou Pix.');return;}
  let additions=[data],schedules=db.schedules||[];
  if(repeat==='installments'){if(!Number.isInteger(count)||count<2||count>360){formError(form,'Informe entre 2 e 360 parcelas.');return;}const group=newId();additions=Array.from({length:count},(_,i)=>({...data,id:i===0?data.id:newId(),description:`${data.description} (${i+1}/${count})`,date:shiftedDate(data.date,i),invoiceMonth:shiftedDate(data.invoiceMonth+'-01',i).slice(0,7),status:i===0?data.status:'pending',paymentDate:i===0?data.paymentDate:'',paymentMethod:i===0||data.paymentMethod==='credit'?data.paymentMethod:'pending',...(data.cardId?{dueDate:shiftedDate(shiftedDate(data.invoiceMonth+'-01',i).slice(0,7)+'-'+String(db.cards.find(c=>c.id===data.cardId).due).padStart(2,'0'),0)}:{}),installmentGroup:group}));}
