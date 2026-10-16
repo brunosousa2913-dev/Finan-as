@@ -27,3 +27,5 @@
 .actions{flex-wrap:wrap;max-width:320px}.actions button{white-space:normal}@media(max-width:650px){.row-right{max-width:55%}.actions{max-width:165px}.actions button{max-width:100%;min-height:44px}}
 
 .invoice-summary{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:24px}@media(max-width:650px){.invoice-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.invoice-summary .stat:last-child{grid-column:1/-1}}
+
+.invoice-purchases-title{margin:22px 0 12px}.invoice-purchases{max-height:360px;margin-bottom:18px}.invoice-purchases .row{align-items:flex-start;flex-direction:column}.invoice-purchases .row-right{width:100%;max-width:100%}.invoice-purchases .actions{max-width:100%}
