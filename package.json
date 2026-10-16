@@ -1,0 +1,11 @@
+{
+  "name": "financas",
+  "version": "4.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "check": "node --check app.js && node --check server.js && node --check sw.js",
+    "package": "python3 scripts/build-final.py"
+  }
+}

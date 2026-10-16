@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "salario",
+      "description": "Salário",
+      "amount": 5500,
+      "date": "2026-10-05",
+      "category": "Salário",
+      "status": "paid",
+      "type": "income",
+      "cardId": "",
+      "invoiceMonth": "2026-10"
+    },
+    {
+      "id": "freela",
+      "description": "Trabalho extra",
+      "amount": 800,
+      "date": "2026-10-12",
+      "category": "Outros",
+      "status": "paid",
+      "type": "income",
+      "cardId": "",
+      "invoiceMonth": "2026-10"
+    },
+    {
+      "id": "aluguel:2026-10",
+      "description": "Aluguel",
+      "amount": 1500,
+      "date": "2026-10-10",
+      "category": "Moradia",
+      "status": "paid",
+      "type": "expense",
+      "cardId": "",
+      "invoiceMonth": "2026-10",
+      "scheduleId": "aluguel"
+    },
+    {
+      "id": "mercado",
+      "description": "Supermercado",
+      "amount": 320,
+      "date": "2026-10-14",
+      "category": "Alimentação",
+      "status": "paid",
+      "type": "expense",
+      "cardId": "",
+      "invoiceMonth": "2026-10"
+    },
+    {
+      "id": "internet:2026-10",
+      "description": "Internet",
+      "amount": 120,
+      "date": "2026-10-20",
+      "category": "Moradia",
+      "status": "pending",
+      "type": "expense",
+      "cardId": "",
+      "invoiceMonth": "2026-10",
+      "scheduleId": "internet"
+    },
+    {
+      "id": "energia",
+      "description": "Conta de energia",
+      "amount": 185,
+      "date": "2026-10-22",
+      "category": "Moradia",
+      "status": "pending",
+      "type": "expense",
+      "cardId": "",
+      "invoiceMonth": "2026-10"
+    },
+    {
+      "id": "transporte",
+      "description": "Combustível",
+      "amount": 200,
+      "date": "2026-10-15",
+      "category": "Transporte",
+      "status": "paid",
+      "type": "expense",
+      "cardId": "",
+      "invoiceMonth": "2026-10"
+    },
+    {
+      "id": "restaurante",
+      "description": "Restaurante",
+      "amount": 85,
+      "date": "2026-10-16",
+      "category": "Alimentação",
+      "status": "pending",
+      "type": "expense",
+      "cardId": "demo-card",
+      "invoiceMonth": "2026-10"
+    },
+    {
+      "id": "receber",
+      "description": "Serviço a receber",
+      "amount": 450,
+      "date": "2026-10-25",
+      "category": "Outros",
+      "status": "pending",
+      "type": "income",
+      "cardId": "",
+      "invoiceMonth": "2026-10"
+    },
+    {
+      "id": "fin-0",
+      "description": "Financiamento ( 1/3 )",
+      "amount": 650,
+      "date": "2026-10-25",
+      "category": "Outros",
+      "status": "pending",
+      "type": "expense",
+      "cardId": "",
+      "invoiceMonth": "2026-10",
+      "installmentGroup": "fin-demo"
+    },
+    {
+      "id": "cartao-0",
+      "description": "Celular (1/3)",
+      "amount": 240,
+      "date": "2026-10-27",
+      "category": "Compras",
+      "status": "pending",
+      "type": "expense",
+      "cardId": "demo-card",
+      "invoiceMonth": "2026-10",
+      "installmentGroup": "cel-demo"
+    },
+    {
+      "id": "fin-1",
+      "description": "Financiamento ( 2/3 )",
+      "amount": 650,
+      "date": "2026-11-25",
+      "category": "Outros",
+      "status": "pending",
+      "type": "expense",
+      "cardId": "",
+      "invoiceMonth": "2026-11",
+      "installmentGroup": "fin-demo"
+    },
+    {
+      "id": "cartao-1",
+      "description": "Celular (2/3)",
+      "amount": 240,
+      "date": "2026-11-27",
+      "category": "Compras",
+      "status": "pending",
+      "type": "expense",
+      "cardId": "demo-card",
+      "invoiceMonth": "2026-11",
+      "installmentGroup": "cel-demo"
+    },
+    {
+      "id": "fin-2",
+      "description": "Financiamento ( 3/3 )",
+      "amount": 650,
+      "date": "2026-12-25",
+      "category": "Outros",
+      "status": "pending",
+      "type": "expense",
+      "cardId": "",
+      "invoiceMonth": "2026-12",
+      "installmentGroup": "fin-demo"
+    },
+    {
+      "id": "cartao-2",
+      "description": "Celular (3/3)",
+      "amount": 240,
+      "date": "2026-12-27",
+      "category": "Compras",
+      "status": "pending",
+      "type": "expense",
+      "cardId": "demo-card",
+      "invoiceMonth": "2026-12",
+      "installmentGroup": "cel-demo"
+    }
+  ],
+  "cards": [
+    {
+      "id": "demo-card",
+      "name": "Cartão principal",
+      "digits": "4821",
+      "limit": 5000,
+      "closing": 20,
+      "due": 27
+    }
+  ],
+  "schedules": [
+    {
+      "id": "aluguel",
+      "start": "2026-10-10",
+      "active": true,
+      "entry": {
+        "id": "aluguel",
+        "description": "Aluguel",
+        "amount": 1500,
+        "date": "2026-10-10",
+        "category": "Moradia",
+        "status": "pending",
+        "type": "expense",
+        "cardId": "",
+        "invoiceMonth": "2026-10"
+      }
+    },
+    {
+      "id": "internet",
+      "start": "2026-10-20",
+      "active": true,
+      "entry": {
+        "id": "internet",
+        "description": "Internet",
+        "amount": 120,
+        "date": "2026-10-20",
+        "category": "Moradia",
+        "status": "pending",
+        "type": "expense",
+        "cardId": "",
+        "invoiceMonth": "2026-10"
+      }
+    }
+  ]
+}
