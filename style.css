@@ -25,3 +25,5 @@
 /* Listas compactas com rolagem acessível, mantendo áreas de toque. */
 .movement-scroll{max-height:560px;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior-y:contain;padding-right:8px}.movement-scroll .row{padding:10px 0;gap:10px}.movement-scroll .actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.movement-scroll .row-title{font-size:13px}.movement-scroll .paid-check{margin:5px 0}.movement-scroll button{padding:8px 10px;min-height:36px}@media(max-width:650px){.movement-scroll{max-height:65vh}.movement-scroll .row{align-items:flex-start}.movement-scroll .actions{max-width:165px}.movement-scroll button{min-height:44px}}
 .actions{flex-wrap:wrap;max-width:320px}.actions button{white-space:normal}@media(max-width:650px){.row-right{max-width:55%}.actions{max-width:165px}.actions button{max-width:100%;min-height:44px}}
+
+.invoice-summary{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:24px}@media(max-width:650px){.invoice-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.invoice-summary .stat:last-child{grid-column:1/-1}}
