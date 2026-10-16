@@ -7,7 +7,26 @@ const fixture=JSON.parse(fs.readFileSync(path.join(root,'demo-data.json'),'utf8'
 await ctx.route('**/cloud-config.js',r=>r.fulfill({contentType:'text/javascript',body:"window.FINANCE_CLOUD_CONFIG={url:'https://manual-example.supabase.co',publicKey:'sb_publishable_example'};"}));
 await ctx.route('https://manual-example.supabase.co/**',r=>{const req=r.request(),url=new URL(req.url());const headers={'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS'};let data={};if(url.pathname==='/auth/v1/token')data={access_token:'example-user-token',refresh_token:'example-refresh',expires_in:3600,user:{id:'example-user',email:'usuario@exemplo.com'}};else if(url.pathname.includes('meu_saldo_members'))data=[{role:'user',active:true}];else if(url.pathname.includes('meu_saldo_accounts'))data=[{document:fixture,revision:1}];return r.fulfill({headers,body:JSON.stringify(data)});});
 await page.goto(process.env.TEST_URL||'http://127.0.0.1:3000',{waitUntil:'domcontentloaded'});await page.locator('#login-form').waitFor();await page.fill('#login-form [name=email]','usuario@exemplo.com');
-const shot=async(name,selector)=>{await page.locator(selector).screenshot({path:path.join(out,name+'.png')});};
+const highlights={
+ '01-entrar':['[name=email]','[name=password]','[data-cloud=login]'],
+ '02-resumo':['.stat:nth-child(1)','.stat:nth-child(4)'],
+ '02-filtros':['#date-mode','#filter-start','#filter-end'],
+ '03-pix':['[name=paymentMethod]','[name=date]','#save-entry'],
+ '04-cartao':['[name=closing]','[name=due]'],
+ '04-credito':['[name=paymentMethod]','[name=cardId]','[name=invoiceMonth]'],
+ '05-parcelas':['[name=paymentMethod]','[name=repeat]','[name=installments]'],
+ '06-movimentacoes':['#search','[data-paid]','[data-edit]'],
+ '07-fatura':['[name=total]','[name=paid]','#save-invoice'],
+ '08-conta':['[data-cloud=refresh]','[data-cloud=logout]'],
+ '08-backup':['#export','label'],
+ '09-cores':['#theme-select']
+};
+const shot=async(name,selector)=>{
+ const target=page.locator(selector);await target.scrollIntoViewIfNeeded();
+ await target.evaluate((root,selectors)=>{root.__manualPosition=root.style.position;if(getComputedStyle(root).position==='static')root.style.position='relative';root.__manualMarks=[];const bounds=root.getBoundingClientRect();selectors.forEach((selector,index)=>{const field=root.querySelector(selector);if(!field)return;const box=field.getBoundingClientRect();if(!box.width||!box.height)return;const old=field.style.boxShadow;field.style.boxShadow='0 0 0 2px #e9a127';const badge=document.createElement('span');badge.textContent=String(index+1);badge.style.cssText=`position:absolute;z-index:999;pointer-events:none;left:${box.right-bounds.left+root.scrollLeft-17}px;top:${box.top-bounds.top+root.scrollTop-12}px;background:#b75b08;color:white;border:2px solid white;border-radius:50%;width:25px;height:25px;text-align:center;font:bold 13px/21px Arial;box-shadow:0 1px 4px #0003`;root.append(badge);root.__manualMarks.push({field,old,badge});});},highlights[name]||[]);
+ await target.screenshot({path:path.join(out,name+'.png')});
+ await target.evaluate(root=>{for(const item of root.__manualMarks||[]){item.field.style.boxShadow=item.old;item.badge.remove();}root.style.position=root.__manualPosition||'';delete root.__manualMarks;delete root.__manualPosition;});
+};
 await shot('01-entrar','#content');await page.fill('#login-form [name=password]','Exemplo-seguro-123');await page.click('[data-cloud=login]');await page.locator('[data-cloud=refresh]').waitFor();await page.fill('#month','2026-10');await page.dispatchEvent('#month','change');await page.click('[data-tab=overview]');await shot('02-resumo','.stats');await page.selectOption('#date-mode','range');await page.fill('#filter-start','2026-10-01');await page.fill('#filter-end','2026-10-31');await page.dispatchEvent('#filter-end','change');await shot('02-filtros','.period');await page.selectOption('#date-mode','month');
 await page.click('#new-entry');await page.fill('#entry-form [name=description]','Supermercado');await page.fill('#entry-form [name=amount]','150');await page.selectOption('[name=paymentMethod]','pix');await page.fill('#entry-form [name=date]','2026-10-16');await shot('03-pix','#entry-dialog');await page.locator('#entry-dialog .close').click();
 await page.click('[data-tab=cards]');await page.click('#add-card');for(const [key,value]of Object.entries({name:'Meu cartão',digits:'4821',limit:'5000',closing:'20',due:'27'}))await page.fill(`#card-form [name=${key}]`,value);await shot('04-cartao','#card-dialog');await page.locator('#card-dialog .close').click();
@@ -19,7 +38,7 @@ await page.click('[data-tab=account]');await shot('08-conta','#content');await p
 await page.setViewportSize({width:390,height:844});await page.click('[data-tab=install]');await page.locator('#content').scrollIntoViewIfNeeded();await shot('09-instalar','#content');await shot('09-cores','.theme-picker');
 if(errors.length)throw Error(errors.join(';'));await ctx.close();
 const img=(name,style='')=>`<img style="${style}" src="data:image/png;base64,${fs.readFileSync(path.join(out,name+'.png')).toString('base64')}" alt="Tela de exemplo: ${name}">`;
-const pageHtml=(n,title,body)=>`<section class="sheet"><header><b>◈ meu saldo</b><span>MANUAL DO USUÁRIO · VERSÃO 6.1</span></header><h1><i>${String(n).padStart(2,'0')}</i>${title}</h1>${body}<footer><span>Telas com dados fictícios · Meu Saldo</span><span>${n} / 9</span></footer></section>`;
+const pageHtml=(n,title,body)=>`<section class="sheet"><header><b>◈ meu saldo</b><span>GUIA VISUAL DO USUÁRIO · VERSÃO 6.1</span></header><h1><i>${String(n).padStart(2,'0')}</i>${title}</h1>${body}<footer><span>Telas com destaques numerados · Dados fictícios</span><span>${n} / 9</span></footer></section>`;
 const note=s=>`<div class="note">${s}</div>`;
 let sections=[];
 sections.push(pageHtml(1,'Entrar na sua conta',`<p class="lead">Acesse suas finanças no computador, Android ou iPhone usando a mesma conta.</p>${img('01-entrar')}<ol><li>Abra <b>https://financas-kb.netlify.app</b>.</li><li>Informe seu <b>e-mail</b> e sua <b>senha</b>. Clique em <b>Entrar</b>.</li><li>Se não lembrar da senha, preencha o e-mail e clique em <b>Esqueci minha senha</b>. Confira a caixa de entrada e o spam; abra o link recebido e defina a nova senha.</li></ol>${note('Use o acesso que foi fornecido a você. O cadastro de novas contas não está disponível nesta tela. Não compartilhe sua senha.')}<h2>Antes de começar</h2><p>Para carregar e salvar as finanças da sua conta online, mantenha conexão com a internet. Aguarde a confirmação ao salvar cada alteração.</p>`));
