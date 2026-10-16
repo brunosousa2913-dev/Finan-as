@@ -1,72 +1,73 @@
-# Meu saldo — finanças pessoais · versão final 4.0
+# Meu saldo — finanças pessoais · versão 5.0
 
-Para baixar pelo GitHub, clique em **Code → Download ZIP**. Extraia a pasta. O arquivo `financas-final.html` permite abrir o sistema diretamente no navegador. Para publicar com HTTPS e instalar na tela inicial do celular, use o pacote `financas-final-site.zip` e siga `PUBLICAR.md`. Exporte um backup antes de mudar de arquivo, endereço ou navegador.
+Sistema web responsivo em português para receitas, despesas, contas fixas, parcelas, cartões e faturas. Inclui login e sincronização entre aparelhos quando conectado a um projeto Supabase exclusivo das finanças.
 
-Os dados reais são salvos no navegador do usuário; este repositório contém código e exemplos fictícios. A cópia principal começa sem registros.
-
-Sistema web responsivo para acompanhar receitas, despesas, contas a pagar e receber, cartões e faturas. Interface em português e valores em reais.
+Para baixar, clique em **Code → Download ZIP** no GitHub e extraia a pasta. Para publicar/atualizar o site, use `financas-final-site.zip` e siga [PUBLICAR.md](PUBLICAR.md). Para ativar login, siga [CONFIGURAR-LOGIN.md](CONFIGURAR-LOGIN.md). A configuração pública distribuída começa vazia: login não funciona até conectar o projeto real.
 
 ## Executar
 
-Requer Node.js 18 ou superior, sem dependências externas.
+Node.js 18 ou superior, sem dependências externas em produção:
 
 ```sh
 npm start
 ```
 
-O servidor escuta na porta 3000 (ou na variável `PORT`). Para disponibilizar no Android e iPhone fora da rede local, publique em uma hospedagem com HTTPS. A aplicação também pode ser hospedada como arquivos estáticos (`index.html`, `style.css`, `app.js`).
+A porta padrão é 3000, configurável com `PORT`. A aplicação também pode ser hospedada como arquivos estáticos com HTTPS. Os caminhos relativos permitem hospedagem em subpasta. Não há fontes ou bibliotecas baixadas em tempo de execução.
 
 ## Funcionalidades
 
-- Resumo mensal, saldo realizado e despesas por categoria.
-- Cadastro, edição e exclusão de receitas e despesas.
-- Contas pendentes, identificação de atrasos e confirmação de pagamento/recebimento.
-- Cadastro de cartões com limite, fechamento e vencimento; nunca informe dados completos ou CVV.
-- Compras vinculadas ao mês da fatura, limite disponível e quitação da fatura.
-- Busca, filtro por tipo e seleção de mês.
-- Cinco cores para o site (verde, azul, roxo, rosa e terracota), com preferência salva neste navegador.
-- Exportação e importação de backup JSON validado, com confirmação antes de substituir dados.
+- Receitas e despesas com categorias, busca, edição e exclusão.
+- Filtros por mês, dia e período inclusivo de até 10 anos, com validação de datas.
+- Check Pago/Recebido para confirmar ou desfazer pagamentos, atualizando os totais.
+- Contas fixas mensais e parcelamentos de 2 a 360 parcelas. Datas são ajustadas ao último dia do mês; só a primeira parcela usa o status escolhido, as futuras começam pendentes.
+- Cartões com limite, fechamento, vencimento e fatura do mês inicial do filtro. A escolha do mês da fatura é manual; o limite desconta todas as compras pendentes.
+- Categorias personalizadas ao escolher Outros. Nomes já usados ficam disponíveis nos próximos cadastros.
+- Dez cores sem verde, com preferência por aparelho.
+- Backup JSON com validação e confirmação antes de substituir registros.
+- Manifesto, ícones, instalação na tela inicial e uso local offline após a primeira visita.
+- Login, cadastro com confirmação de e-mail, recuperação de senha, migração local e sincronização com Supabase.
 
-## Persistência e limites
+## Login e dados em vários aparelhos
 
-Os registros são salvos no `localStorage`, com alternativa em IndexedDB se o navegador bloquear o primeiro método, por navegador e origem. Se ambos estiverem bloqueados, o formulário mostra um erro e não confirma o salvamento. Não existe conta, servidor de dados ou sincronização entre dispositivos. Não use navegação privada para guardar seus registros. Limpar os dados do navegador pode apagar tudo; exporte backups regularmente. O backup contém informações financeiras pessoais.
+Use um **projeto Supabase exclusivo** para ter usuários separados do ML Controle. Execute `supabase/setup.sql`, preencha `cloud-config.js` apenas com a URL e a chave pública publishable/anon, configure as URLs de autenticação e atualize a hospedagem. Nunca publique senhas, secret keys ou service_role.
 
-O mês da fatura é informado manualmente; fechamento e vencimento são referências. O saldo mensal considera entradas recebidas e despesas pagas na data registrada. O limite disponível desconta todas as compras de cartão pendentes. Contas fixas geram vencimentos pendentes ao selecionar cada mês a partir do início, até encerrar. Parcelamentos geram de 2 a 360 parcelas com o valor unitário informado; datas como dia 31 são ajustadas ao último dia do mês. Só a primeira parcela usa o status escolhido, as demais ficam pendentes. Cada vencimento pode ser editado ou excluído individualmente. Não há cálculo de juros ou importação bancária.
+No modo configurado, o usuário deve entrar para acessar as finanças. Cada usuário lê apenas sua linha, protegida por RLS. Escritas passam por uma função que verifica `auth.uid()` e a revisão. Computador e celular usam o mesmo e-mail e senha da conta de finanças. A atualização ocorre ao salvar, ao voltar à janela e a cada 20 segundos sem edição modal aberta.
 
-## Verificação
+Conflitos entre aparelhos não são mesclados silenciosamente: o banco recusa uma versão antiga, mantém o formulário e orienta atualizar os dados antes de tentar novamente. A gravação online precisa de internet e confirmação do servidor. Não existe fila de alterações offline.
+
+Os registros locais anteriores são preservados separadamente. Antes de migrar, exporte um backup. Entre na conta e use Levar minhas contas locais para a nuvem, disponível para conta online vazia. Se estiver mudando de endereço ou arquivo, exporte no antigo e importe na conta online no novo. Importar backup com login substitui os dados online.
+
+Sem Supabase configurado, o modo local anterior continua funcionando: localStorage com alternativa em IndexedDB, por aparelho e origem. Se ambos estiverem bloqueados, o sistema mostra erro e não confirma o salvamento. Limpar os dados do navegador pode apagar registros; mantenha backups. Não há cálculo de juros, importação bancária ou criptografia adicional do documento no cliente.
+
+## Distribuição
 
 ```sh
 npm run check
+npm run package
 ```
 
-Fluxos de cadastro, persistência após recarga, quitação de fatura e exportação/importação também foram verificados em Chromium com viewport de celular. Validação em aparelhos físicos Android/iPhone e publicação em hospedagem não foram realizadas.
+O empacotamento usa Python 3 e gera `financas-final.html`, `financas-final-demo.html` e `financas-final-site.zip` em `/workspace`. Nenhum registro pessoal ou credencial administrativa é incluído. A configuração pública é incorporada à distribuição no momento da geração. Para uso com login, prefira o site HTTPS publicado em vez do arquivo HTML local.
 
-## Demonstração com dados fictícios
+Acesse `/demo` ou `demo.html` para ver dados fictícios de outubro de 2026. A demonstração é independente do Supabase e usa armazenamento separado. Regere com `python3 scripts/build-demo.py`.
 
-Acesse o caminho `/demo` no servidor ou abra `demo.html`. Outubro de 2026 inclui receitas, despesas, contas fixas, financiamento e cartão. A demonstração usa chaves e banco local separados dos dados reais. Para regenerar após alterações na interface: `python3 scripts/build-demo.py`. Os valores são fictícios; o arquivo demo-data.json permite inspecionar os exemplos.
+## Testes
 
-## Salvamento na prévia (versão 3.1)
+`npm run check` verifica a sintaxe. Com Playwright e Chromium disponíveis e o servidor executando, use `TEST_URL=http://127.0.0.1:3000` com:
 
-O navegador pode impedir submissões nativas em iframes sem `allow-forms`, inclusive o evento `submit`. Os botões Salvar chamam a rotina de validação e armazenamento diretamente, sem submissão ou navegação. A tecla Enter usa a mesma rotina. Bloqueios de armazenamento continuam sendo informados ao usuário, sem confirmação falsa de sucesso.
+```sh
+node tests/save-preview.cjs
+node tests/custom-categories.cjs
+node tests/filters-payment.cjs
+node tests/final-app.cjs
+node tests/cloud-sync.cjs
+```
 
-Teste de regressão, com Playwright disponível e o servidor em execução: `node tests/save-preview.cjs`. O teste verifica gravação de movimentação e cartão numa prévia sem `allow-forms`, persistência após recarga, Enter, validação e armazenamento negado. `TEST_URL` e `CHROMIUM_PATH` podem selecionar o servidor e Chromium.
+O teste de nuvem simula o Supabase: dois aparelhos, usuários distintos, migração, conflitos, conexão perdida, sessão, cadastro e recuperação. O teste SQL executa o script real em PostgreSQL embarcado, verificando RLS, permissão anônima, escrita direta negada e conflitos:
 
-## Filtros e confirmação de pagamento (3.2)
+```sh
+# Com @electric-sql/pglite 0.3.14 disponível como dependência de teste:
+node tests/cloud-database.cjs
+# Ou PGLITE_MODULE=/caminho/para/@electric-sql/pglite node tests/cloud-database.cjs
+```
 
-O seletor de datas oferece mês, dia e período inclusivo de até 10 anos. O resumo, movimentações, pendências e parcelas seguem as datas selecionadas. Contas fixas são geradas uma vez para cada mês abrangido, sem duplicação. Intervalos invertidos mostram uma mensagem. Cartões continuam mostrando a fatura do mês inicial do filtro, indicado na tela.
-
-Cada movimentação tem um check Pago (ou Recebido para entradas). Marcar confirma e desmarcar volta para pendente. A alteração é persistida e atualiza os totais e limites. Em Contas e vencimentos, itens pagos saem da lista; desmarque em Movimentações para torná-los pendentes novamente.
-
-Teste funcional com Playwright e servidor executando: `TEST_URL=http://127.0.0.1:3000 node tests/filters-payment.cjs`. O teste usa `/demo`, datas fictícias, filtro com dois meses, datas invertidas e persistência do check.
-
-## Categorias personalizadas (3.3)
-
-Escolher Outros no formulário abre um campo opcional para escrever uma categoria (até 60 caracteres). Ao salvar a movimentação, a categoria é armazenada nos dados e incluída na lista dos próximos cadastros. Campo vazio mantém Outros. Nomes iguais com diferenças de maiúsculas ou espaços são reutilizados. Categorias são mantidas nos backups JSON; backups antigos continuam aceitos. Teste com Playwright: `node tests/custom-categories.cjs`.
-
-## Versão final: web e tela inicial
-
-Dez temas: azul, azul-marinho, azul-claro, roxo, rosa, pink, terracota, laranja, vermelho e grafite. Verde foi removido; preferências antigas verdes usam azul. Dados financeiros mantêm o mesmo formato e chave de armazenamento.
-
-A aplicação inclui manifesto, ícones e service worker para instalação pelo navegador e uso offline depois da primeira visita online. Publique com HTTPS; consulte PUBLICAR.md para Android, iPhone e computador. Os recursos não exigem conta ou serviço externo. A fonte usa arquivos do sistema, sem download de fontes. Os arquivos relativos também permitem hospedagem em subpasta.
-
-Gere a distribuição com `npm run package`. O pacote final não contém dados de demonstração ou dados pessoais. O HTML de demonstração é separado. Teste PWA/cores/offline: `TEST_URL=http://127.0.0.1:3000 node tests/final-app.cjs`, com Playwright disponível. Testes em Chromium não confirmam instalação em aparelhos físicos.
+Os testes locais não confirmam e-mail, políticas e conectividade no projeto Supabase real. A ativação requer configurar e testar esse projeto. Não foi realizada instalação em aparelhos físicos ou publicação do novo pacote em hospedagem externa.

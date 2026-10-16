@@ -1,25 +1,35 @@
-# Meu saldo — versão final 4.0
+# Meu saldo — versão 5.0
 
-## Publicar na web
+## Login e sincronização
 
-Extraia o pacote e publique a pasta que contém `index.html` em uma hospedagem estática com HTTPS. Preserve os nomes e a pasta `icons`. Não é necessário servidor de banco de dados. Os arquivos `index.html`, `app.js`, `style.css`, `sw.js`, `manifest.webmanifest` e `icons/` devem ficar juntos.
+Para usuários independentes do ML Controle, crie um projeto Supabase exclusivo das finanças e siga **CONFIGURAR-LOGIN.md**. O código sem configuração continua em modo local. Para compartilhar as mesmas finanças entre aparelhos, o projeto real precisa estar configurado, com a tabela e as políticas do script `supabase/setup.sql`.
 
-No Netlify, por exemplo, envie a pasta extraída em https://app.netlify.com/drop e use o endereço HTTPS fornecido. O pacote não publica o site sozinho.
+Não inclua senha de banco, senha pessoal ou chave service_role no site. `cloud-config.js` deve conter somente URL e chave pública publishable/anon.
 
-## Salvar no celular
+## Atualizar o site
 
-- Android/Chrome: abra o endereço HTTPS, acesse o menu ⋮ e escolha Instalar aplicativo ou Adicionar à tela inicial.
-- iPhone/Safari: abra o endereço HTTPS no Safari, toque em Compartilhar e Adicionar à Tela de Início. Se houver a opção, ative Abrir como App da Web.
+1. Exporte um backup dos registros na versão que você está usando e guarde uma cópia.
+2. Configure o Supabase conforme CONFIGURAR-LOGIN.md.
+3. Gere o pacote com `npm run package` se alterou cloud-config.js. A pasta de arquivos do repositório também pode ser publicada diretamente.
+4. Extraia `financas-final-site.zip`. Preserve `index.html`, `app.js`, `cloud.js`, `cloud-config.js`, `style.css`, `sw.js`, `manifest.webmanifest` e a pasta `icons/` juntos.
+5. No Netlify, envie a pasta extraída para atualizar o **mesmo projeto/site**. Preserve seu endereço para continuar acessando os registros locais antigos. Também pode configurar publicação a partir deste repositório.
+6. Abra o site HTTPS. Se ainda aparecer a versão anterior, feche e reabra o aplicativo para ativar a atualização. Não limpe os dados antes de exportar backup.
+7. Entre pela aba Minha conta e sincronização e leve os dados locais para a conta, ou importe seu backup.
+
+O pacote não publica o site sozinho. O arquivo HTML independente continua disponível para uso local/teste; para login e instalação, prefira o site HTTPS publicado.
+
+## Abrir no celular
+
+- Android/Chrome: abra o endereço HTTPS e use menu ⋮ → Instalar aplicativo ou Adicionar à tela inicial.
+- iPhone/Safari: abra o endereço HTTPS e use Compartilhar → Adicionar à Tela de Início. Se houver a opção, ative Abrir como App da Web.
 - Computador/Chrome ou Edge: use o ícone de instalação na barra de endereço ou a opção do menu.
 
-A aba Instalar no celular também contém essas instruções. A instalação depende do navegador. Abra uma vez com internet para preparar os arquivos offline. Não é um aplicativo de App Store ou Play Store.
+Entre com o mesmo e-mail e senha em cada aparelho para carregar os dados dessa conta. Outras contas não veem suas finanças. O sistema não usa as contas do ML Controle se você criou o projeto exclusivo recomendado.
 
-## Seus dados
+No modo online, gravações exigem conexão. O modo local continua funcionando offline depois da primeira visita. A instalação depende do navegador e não é um aplicativo de App Store/Play Store.
 
-Os dados ficam no navegador/aparelho e endereço utilizado. Não há login nem sincronização automática. Antes de mudar de arquivo, navegador, endereço ou aparelho, exporte seu backup na versão que contém seus registros. Depois importe o JSON na nova versão em Backup dos dados. Mantenha cópias em local seguro. Limpar dados do navegador pode apagar os registros.
+## Backups e segurança
 
-O arquivo HTML independente serve para abrir/testar sem hospedagem. Para instalação e modo offline gerenciado, use o pacote publicado com HTTPS.
+O backup JSON contém dados financeiros pessoais: guarde-o em local seguro. No modo online, importar substitui os registros da conta depois da confirmação. Mantenha uma cópia antes de importar ou migrar.
 
-## Verificação
-
-Foram testados no Chromium: salvamento na prévia, cartões, categorias personalizadas, filtros, marcar/desmarcar pagamento, dez temas sem verde, preservação de dados após recarregar e uso offline. Não foi realizada publicação externa nem instalação em aparelhos físicos Android/iPhone.
+Testes locais cobrem o uso da interface com Supabase simulado e as políticas reais em PostgreSQL embarcado. A configuração do Supabase real e a publicação devem ser verificadas antes de usar dados reais. Consulte CONFIGURAR-LOGIN.md.

@@ -27,7 +27,7 @@ js=js.replace('let db = {version:1,entries:[],cards:[]}', 'let db = '+json.dumps
 js=js.replace("$('#month').value=today().slice(0,7);", "$('#month').value='2026-10';",1)
 html=(root/'index.html').read_text().replace('<title>Meu saldo — Finanças pessoais</title>','<title>Demonstração final — Meu saldo</title>')
 html=html.replace('<link rel="stylesheet" href="./style.css">','<style>'+(root/'style.css').read_text()+'\n.demo-banner{padding:16px 20px;background:#fff1cf;color:#73551d;border:1px solid #ead6a8;border-radius:10px;margin-bottom:24px;font-size:13px;line-height:1.6}</style>')
-html=html.replace('<script src="./app.js" defer></script>','').replace('<main>','<main><div class="demo-banner"><b>VERSÃO FINAL · DEMONSTRAÇÃO · DADOS FICTÍCIOS</b><br>Outubro de 2026 já está preenchido para você explorar. Esta demonstração usa armazenamento separado dos seus registros. Experimente as contas, faturas e o botão Nova movimentação.</div>')
+html=html.replace('<script src="./cloud-config.js" defer></script>','').replace('<script src="./cloud.js" defer></script>','').replace('<script src="./app.js" defer></script>','').replace('<main>','<main><div class="demo-banner"><b>VERSÃO FINAL · DEMONSTRAÇÃO · DADOS FICTÍCIOS</b><br>Outubro de 2026 já está preenchido para você explorar. Esta demonstração usa armazenamento separado dos seus registros. Experimente as contas, faturas e o botão Nova movimentação.</div>')
 html=html.replace('</body>','<script>'+js+'</script></body>')
 (root/'demo.html').write_text(html)
 print('demo.html e demo-data.json gerados.')

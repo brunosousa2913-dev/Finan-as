@@ -1,5 +1,6 @@
 const $ = s => document.querySelector(s);
 const key = 'meu-saldo-v1';
+const cloud=window.FinanceCloud;let localSnapshot=null,cloudMessage='',cloudError=false;
 // randomUUID is unavailable in some mobile browsers and HTTP contexts.
 function newId(){
  if(typeof globalThis.crypto?.randomUUID==='function')return globalThis.crypto.randomUUID();
@@ -40,8 +41,10 @@ const storageReady=(async()=>{try{
  }catch{loadBlocked=true;$('#storage-warning').textContent='Os dados existentes não puderam ser carregados. O salvamento foi bloqueado para evitar sobrescrevê-los. Abra a versão anterior e exporte um backup.';}
 })();
 async function persist(next,form){await storageReady;if(loadBlocked){formError(form,'Não foi possível carregar os registros anteriores. Exporte seu backup antes de continuar.');return false;}
+ if(cloud?.configured&&!cloud.signedIn){formError(form,'Entre na sua conta antes de salvar.');return false;}
+ if(cloud?.signedIn){try{const saved=await cloud.save(next);db=saved;cloudMessage='Salvo e sincronizado na sua conta.';cloudError=false;updateCloudStatus();return true;}catch(error){cloudMessage=error.message;cloudError=true;formError(form,error.message);updateCloudStatus();return false;}}
  const raw=JSON.stringify(next);
- try{if(storageMode==='indexed')await idb('put',raw);else{try{localStorage.setItem(key,raw);if(localStorage.getItem(key)!==raw)throw Error();}catch{await idb('put',raw);storageMode='indexed';}}db=next;$('#storage-warning').textContent='';return true;}
+ try{if(storageMode==='indexed')await idb('put',raw);else{try{localStorage.setItem(key,raw);if(localStorage.getItem(key)!==raw)throw Error();}catch{await idb('put',raw);storageMode='indexed';}}db=next;localSnapshot=JSON.parse(raw);$('#storage-warning').textContent='';return true;}
  catch{formError(form,'O navegador bloqueou o armazenamento. Abra o site em uma aba normal do Chrome ou Safari, fora da prévia e da navegação privada. Nenhum registro foi salvo.');return false;}
 }
 function shiftedDate(date,offset){const [y,m,d]=date.split('-').map(Number);const end=new Date(y,m+offset,0);return `${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,'0')}-${String(Math.min(d,end.getDate())).padStart(2,'0')}`;}
@@ -71,11 +74,12 @@ function status(e){return e.status==='paid'?'<span class="badge">'+(e.type==='in
 function rows(entries){return entries.length?entries.map(e=>`<div class="row"><div><div class="row-title">${esc(e.description)}</div><small>${esc(e.category)} · ${dateLabel(e.date)}${e.cardId?' · '+esc(db.cards.find(c=>c.id===e.cardId)?.name||'Cartão'):''}</small></div><div class="row-right"><div class="${e.type==='income'?'positive':'red'}">${e.type==='income'?'+':'−'} ${money(e.amount)}</div><div style="margin-top:6px">${status(e)}</div><label class="paid-check"><input type="checkbox" data-paid="${esc(e.id)}" ${e.status==='paid'?'checked':''} aria-label="${e.type==='income'?'Recebido':'Pago'}: ${esc(e.description)}">${e.type==='income'?'Recebido':'Pago'}</label><div class="actions"><button data-edit="${esc(e.id)}">Editar</button><button data-delete="${esc(e.id)}" aria-label="Excluir ${esc(e.description)}">Excluir</button></div></div></div>`).join(''):empty('Nenhuma movimentação por aqui','Adicione suas receitas e despesas para começar.');}
 function panel(title,body,subtitle=''){return `<div class="panel"><div class="panel-head"><div><h2>${title}</h2>${subtitle?`<p>${subtitle}</p>`:''}</div></div>${body}</div>`;}
 function render(){
- const titles={overview:'Visão geral',transactions:'Movimentações',bills:'Contas e vencimentos',cards:'Cartões e faturas',backup:'Backup dos dados',fixed:'Contas fixas e parcelas',install:'Instalar no celular'};
+ const titles={overview:'Visão geral',transactions:'Movimentações',bills:'Contas e vencimentos',cards:'Cartões e faturas',backup:'Backup dos dados',fixed:'Contas fixas e parcelas',install:'Instalar no celular',account:'Minha conta e sincronização'};
  $('#page-title').textContent=titles[tab];document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
  const entries=monthEntries(),income=sum(entries.filter(e=>e.type==='income'&&e.status==='paid')),expense=sum(entries.filter(e=>e.type==='expense'&&e.status==='paid')),pending=sum(entries.filter(e=>e.type==='expense'&&e.status==='pending'));
  let html='';
- if(tab==='overview'){
+ if(cloud?.configured&&!cloud.connected&&!['account','install'].includes(tab)){html=panel('Entre e carregue sua conta','<p>Os registros locais estão preservados. Abra Minha conta para carregar seus dados online ou sair.</p>');$('#content').innerHTML=html;return;}
+ if(tab==='account'){html=accountPanel();}else if(tab==='overview'){
  html=`<div class="stats">${[['Saldo do período',income-expense,'Entradas recebidas menos saídas pagas'],['Entradas recebidas',income,'Receitas confirmadas no filtro'],['Saídas pagas',expense,'Despesas quitadas no filtro'],['Contas a pagar',pending,'Despesas pendentes no filtro']].map(([t,v,s])=>`<div class="stat"><div class="stat-label">${t}</div><strong>${money(v)}</strong><small>${s}</small></div>`).join('')}</div>`;
  const categories=Object.create(null);entries.filter(e=>e.type==='expense').forEach(e=>categories[e.category]=(categories[e.category]||0)+e.amount);const total=Object.values(categories).reduce((a,b)=>a+b,0);
  html+=`<div class="dashboard-grid"><div>${panel('Últimas movimentações',rows([...entries].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5)),'Acompanhe o que entrou e saiu')}${panel('Próximos vencimentos',rows(entries.filter(e=>e.status==='pending').sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3)),'Contas a pagar e valores a receber')}</div><div>${panel('Despesas por categoria',Object.keys(categories).length?Object.entries(categories).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div class="category-row"><div><span>${esc(c)}</span><b>${money(v)}</b></div><div class="progress"><div style="width:${v/total*100}%"></div></div></div>`).join(''):empty('Tudo começa com um registro','As categorias aparecerão aqui.'),'Inclui despesas pagas e pendentes')}<div class="welcome"><span>✧</span><div><b>Pequenos hábitos, grandes planos.</b><p>Registre seus gastos e acompanhe sua evolução todos os meses.</p></div></div></div></div>`;
@@ -91,8 +95,8 @@ function render(){
  html=`<div class="panel-head"><div><h2>Meus cartões</h2><p>Fatura de ${esc(dateLabel($('#month').value))} · O cartão usa o mês inicial do filtro.</p></div><button id="add-card">+ Cadastrar cartão</button></div><div class="cards-grid">`;
  html+=db.cards.map(c=>{const invoice=db.entries.filter(e=>e.cardId===c.id&&e.invoiceMonth===$('#month').value),outstanding=sum(db.entries.filter(e=>e.cardId===c.id&&e.status==='pending')),unpaid=invoice.filter(e=>e.status==='pending');return `<div><div class="credit-card"><h3>${esc(c.name)}</h3><div class="digits">•••• •••• •••• ${esc(c.digits)}</div><small>Fatura do mês</small><strong>${money(sum(invoice))}</strong><small>Fecha dia ${c.closing} · Vence dia ${c.due}</small></div><div class="panel"><div class="row"><span>Limite total</span><b>${money(c.limit)}</b></div><div class="row"><span>Limite disponível</span><b>${money(c.limit-outstanding)}</b></div><p class="hint">Disponível = limite menos todas as compras pendentes. Selecione o mês ao registrar cada compra; o fechamento não muda a fatura automaticamente.</p>${unpaid.length?`<button data-invoice="${esc(c.id)}">Quitar fatura (${money(sum(unpaid))})</button>`:''}<button data-remove-card="${esc(c.id)}">Excluir cartão</button></div></div>`;}).join('')||empty('Cadastre seu primeiro cartão','Registre compras como saídas e escolha o cartão no pagamento.');html+='</div>';
  }else if(tab==='install'){
- html=panel('Seu Meu saldo na tela inicial',`<p>Publique este site com HTTPS e abra o endereço no navegador do celular. Depois de abrir uma vez com internet, a versão instalada pode funcionar offline.</p><div class="install-guide"><h3>Android · Chrome</h3><p>Toque em <b>Instalar aplicativo</b> abaixo quando disponível, ou abra o menu ⋮ e escolha <b>Instalar aplicativo</b> / <b>Adicionar à tela inicial</b>.</p><h3>iPhone · Safari</h3><p>Abra o site no Safari, toque em <b>Compartilhar</b> e escolha <b>Adicionar à Tela de Início</b>. Se aparecer, ative “Abrir como App da Web”.</p><h3>Computador</h3><p>No Chrome ou Edge, use o ícone de instalação na barra de endereço ou o menu do navegador.</p></div><button id="install-app" class="primary" ${installPrompt?'':'hidden'}>Instalar aplicativo</button><p id="install-state" class="hint">${location.protocol==='file:'?'Você está usando o arquivo local. A instalação e o modo offline precisam da versão publicada com HTTPS.':'A opção de instalar depende do navegador. Caso não apareça, use as instruções acima.'}</p><p class="hint">Os dados são salvos neste aparelho. Não há sincronização automática. Antes de mudar de endereço, navegador ou versão, exporte seu backup na aba Backup dos dados e importe no novo local.</p>`);
- }else html=panel('Seus dados, com você' ,`<p>As alterações são salvas automaticamente neste navegador e neste aparelho. Para levar seus dados a outro celular ou computador, exporte e importe um backup.</p><p class="hint">Limpar os dados do navegador remove seus registros. O arquivo exportado contém informações financeiras pessoais: guarde-o em um local seguro. Esta versão não sincroniza entre aparelhos.</p><div class="backup-actions"><button id="export" class="primary">↓ Exportar backup</button><label>↑ Importar backup<input type="file" id="import" accept="application/json,.json"></label></div>`);
+ html=panel('Seu Meu saldo na tela inicial',`<p>Publique este site com HTTPS e abra o endereço no navegador do celular. Depois de abrir uma vez com internet, a versão instalada pode funcionar offline.</p><div class="install-guide"><h3>Android · Chrome</h3><p>Toque em <b>Instalar aplicativo</b> abaixo quando disponível, ou abra o menu ⋮ e escolha <b>Instalar aplicativo</b> / <b>Adicionar à tela inicial</b>.</p><h3>iPhone · Safari</h3><p>Abra o site no Safari, toque em <b>Compartilhar</b> e escolha <b>Adicionar à Tela de Início</b>. Se aparecer, ative “Abrir como App da Web”.</p><h3>Computador</h3><p>No Chrome ou Edge, use o ícone de instalação na barra de endereço ou o menu do navegador.</p></div><button id="install-app" class="primary" ${installPrompt?'':'hidden'}>Instalar aplicativo</button><p id="install-state" class="hint">${location.protocol==='file:'?'Você está usando o arquivo local. A instalação e o modo offline precisam da versão publicada com HTTPS.':'A opção de instalar depende do navegador. Caso não apareça, use as instruções acima.'}</p><p class="hint">Sem login, os dados ficam neste aparelho. Com sua conta conectada, alterações confirmadas são sincronizadas online. Para salvar na conta, é preciso conexão. Antes de mudar de endereço, navegador ou versão, exporte seu backup na aba Backup dos dados e importe no novo local.</p>`);
+ }else html=panel('Seus dados, com você' ,`<p>Sem login, as alterações ficam neste navegador. Com login, são salvas na sua conta e podem ser abertas em outros aparelhos. Mantenha também um backup.</p><p class="hint">Limpar os dados do navegador remove seus registros. O arquivo exportado contém informações financeiras pessoais: guarde-o em um local seguro. Entre na mesma conta em cada aparelho para sincronizar. Ao importar com login, você substitui os registros da sua conta online.</p><div class="backup-actions"><button id="export" class="primary">↓ Exportar backup</button><label>↑ Importar backup<input type="file" id="import" accept="application/json,.json"></label></div>`);
  $('#content').innerHTML=html;
 }
 const defaultCategories=['Alimentação','Moradia','Transporte','Saúde','Lazer','Educação','Compras','Salário'];
@@ -114,7 +118,7 @@ async function saveEntry(form){if(!checkForm(form))return;const button=form.quer
  if(repeat==='installments'){if(!Number.isInteger(count)||count<2||count>360){formError(form,'Informe entre 2 e 360 parcelas.');return;}const group=newId();additions=Array.from({length:count},(_,i)=>({...data,id:i===0?data.id:newId(),description:`${data.description} (${i+1}/${count})`,date:shiftedDate(data.date,i),invoiceMonth:shiftedDate(data.invoiceMonth+'-01',i).slice(0,7),status:i===0?data.status:'pending',installmentGroup:group}));}
  if(repeat==='monthly'){const id=newId();schedules=[...schedules,{id,start:data.date,active:true,entry:{...data}}];additions=[{...data,id:id+':'+data.date.slice(0,7),scheduleId:id}];}
  const customCategories=[...(db.categories||[])];if(![...defaultCategories,'Outros',...customCategories].some(c=>categoryKey(c)===categoryKey(data.category)))customCategories.push(data.category);const next={...db,categories:customCategories,schedules,entries:[...db.entries.filter(x=>x.id!==data.id),...additions]};if(!valid(next)){formError(form,'Verifique descrição, valor, data e mês da fatura.');return;}
- if(await persist(next,form)){resetDateMonth(data.date.slice(0,7));$('#date-error').hidden=true;tab='transactions';search=data.description;filter='all';$('#entry-dialog').close();render();toast('Salvo com sucesso neste navegador');}
+ if(await persist(next,form)){resetDateMonth(data.date.slice(0,7));$('#date-error').hidden=true;tab='transactions';search=data.description;filter='all';$('#entry-dialog').close();render();toast(cloud?.signedIn?'Salvo e sincronizado na conta':'Salvo com sucesso neste navegador');}
  }catch(error){formError(form,'Não foi possível concluir: '+error.message);}finally{button.disabled=false;}
 };
 async function saveCard(form){if(!checkForm(form))return;try{await storageReady;const c=Object.fromEntries(new FormData(form));c.id=newId();['limit','closing','due'].forEach(k=>c[k]=Number(c[k]));const next={...db,cards:[...db.cards,c]};if(!valid(next)){formError(form,'Confira os dados do cartão.');return;}if(await persist(next,form)){$('#card-dialog').close();render();toast('Cartão cadastrado');}}catch(error){formError(form,'Não foi possível concluir: '+error.message);}};
@@ -130,7 +134,7 @@ $('#content').addEventListener('input',e=>{if(e.target.id==='search'){const star
 $('#content').addEventListener('change',async e=>{
  if(e.target.matches('[data-paid]')){const box=e.target,previous=!box.checked;box.disabled=true;const next={...db,entries:db.entries.map(x=>x.id===box.dataset.paid?{...x,status:box.checked?'paid':'pending'}:x)};if(await persist(next)){render();toast(box.checked?'Pagamento confirmado':'Marcado como pendente');}else{box.checked=previous;box.disabled=false;}return;}
 if(e.target.id==='filter'){filter=e.target.value;render();}if(e.target.id==='import'){const file=e.target.files[0];if(!file)return;try{if(file.size>5e6)throw Error();const data=JSON.parse(await file.text());if(!valid(data))throw Error();if(confirm('Importar este backup substituirá todos os dados atuais. Deseja continuar?')&&await persist(data)){await ensureSelection();render();toast('Backup importado');}}catch{alert('Backup inválido. Selecione um arquivo JSON exportado pelo Meu saldo (até 5 MB).');}e.target.value='';}});
-$('#content').onclick=async e=>{const b=e.target.closest('button');if(!b)return;let next;
+$('#content').onclick=async e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.cloud){await accountAction(b);return;}let next;
  if(b.id==='install-app'&&installPrompt){await installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;render();}
  if(b.id==='add-fixed'){openEntry();$('#entry-form').elements.repeat.value='monthly';$('#entry-form').elements.status.value='pending';}
  if(b.dataset.stop&&confirm('Encerrar esta conta fixa? Os vencimentos já gerados serão mantidos.'))next={...db,schedules:(db.schedules||[]).map(s=>s.id===b.dataset.stop?{...s,active:false}:s)};
@@ -143,7 +147,55 @@ $('#content').onclick=async e=>{const b=e.target.closest('button');if(!b)return;
  if(b.id==='export'){const url=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=`meu-saldo-${today()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
  if(next&&await persist(next)){render();toast('Alteração salva');}
 };
-storageReady.then(async()=>{await ensureSelection();render();});
+function updateCloudStatus(){
+ const status=$('#cloud-status');if(!status)return;$('#new-entry').disabled=!!cloud?.configured&&!cloud.connected;
+ status.textContent=cloud?.signedIn?(cloud.busy?'Sincronizando…':cloudError?'Sincronização pendente — abra Minha conta':cloud.connected?'Conectado: '+(cloud.user?.email||'sua conta'):'Conta conectada — aguardando carregar dados'):'Dados locais neste navegador';
+ status.classList.toggle('sync-error',cloudError);
+}
+function accountPanel(){
+ if(!cloud?.configured)return panel('Conecte sua conta',`<p>Login e sincronização precisam ser ativados no projeto Supabase. Os registros locais continuam disponíveis.</p><p>Depois da configuração, entre com o mesmo e-mail no computador e no celular. Use a conta exclusiva deste sistema de finanças.</p><p class="hint">O responsável pelo site deve seguir CONFIGURAR-LOGIN.md e publicar cloud-config.js com a URL e a chave pública do projeto. Nenhuma senha de banco de dados deve ser colocada no site.</p>`);
+ const message=`<p id="cloud-message" class="${cloudError?'form-error':'hint'}" role="status">${esc(cloudMessage)}</p>`;
+ if(cloud.signedIn){return panel('Sua conta',`<p>Conectado como <b>${esc(cloud.user.email)}</b></p>${message}<div class="account-actions"><button data-cloud="refresh">Atualizar da nuvem</button><button data-cloud="logout">Sair da conta</button></div>${cloud.recovery?'<form id="recovery-form"><label>Nova senha<input type="password" name="newPassword" autocomplete="new-password" minlength="12" required></label><button type="button" data-cloud="password">Salvar nova senha</button></form>':''}<h3 style="margin-top:24px">Contas que já estavam neste navegador</h3><p class="hint">Os dados locais anteriores foram preservados. Para colocá-los na conta, exporte uma cópia e use o botão abaixo. Ele só permite importar para uma conta online vazia. Se já houver dados online, use o backup e revise antes de substituir.</p><button data-cloud="migrate">Levar minhas contas locais para a nuvem</button><p class="hint">A atualização acontece ao salvar, ao voltar para o site e a cada 20 segundos enquanto nenhuma edição está aberta. Alterações simultâneas são bloqueadas para evitar sobrescrever outro aparelho. Com a conta conectada é necessário estar online para confirmar mudanças.</p>`);}
+ return panel('Entre para usar suas contas em vários aparelhos',`<p>Use o mesmo e-mail e senha no computador, Android e iPhone. Cada usuário acessa apenas as próprias finanças.</p><form id="login-form" novalidate><label>E-mail<input type="email" name="email" autocomplete="username" required></label><label>Senha<input type="password" name="password" autocomplete="current-password"></label>${message}<div class="account-actions"><button type="button" class="primary" data-cloud="login">Entrar</button><button type="button" data-cloud="signup">Criar conta</button><button type="button" data-cloud="reset">Esqueci minha senha</button></div><p class="hint">Para criar uma conta, use uma senha de pelo menos 12 caracteres e confirme seu e-mail. As contas deste sistema são independentes do ML Controle.</p></form>`);
+}
+async function accountAction(button){
+ const action=button.dataset.cloud,form=button.closest('form');
+ let email=form?.elements.email?.value.trim(),password=form?.elements.password?.value;
+ if(['login','signup','reset'].includes(action)){if(!form.elements.email.checkValidity()){cloudMessage='Informe um e-mail válido.';cloudError=true;showAccountMessage();return;}if(action!=='reset'&&!password){cloudMessage='Informe sua senha.';cloudError=true;showAccountMessage();return;}if(action==='signup'&&password.length<12){cloudMessage='Use uma senha de pelo menos 12 caracteres.';cloudError=true;showAccountMessage();return;}}
+ if(action==='password'&&!form.reportValidity())return;
+ button.disabled=true;cloudMessage='Aguarde…';cloudError=false;showAccountMessage();
+ try{
+  if(action==='login'){await cloud.login(email,password);await ensureSelection();render();}
+  if(action==='signup')cloudMessage=await cloud.signup(email,password);
+  if(action==='reset')cloudMessage=await cloud.reset(email);
+  if(action==='password'){await cloud.password(form.elements.newPassword.value);cloudMessage='Senha atualizada.';render();}
+  if(action==='refresh'){await cloud.refresh();await ensureSelection();render();}
+  if(action==='logout'){await cloud.logout();cloudMessage='Você saiu da conta. Seus dados online continuam protegidos.';render();}
+  if(action==='migrate'){
+   if(!cloud.connected)throw Error('Atualize os dados da nuvem antes de importar.');
+   if(db.entries.length||db.cards.length||(db.schedules||[]).length)throw Error('A conta online já contém registros. A importação automática foi bloqueada para preservar os dados.');
+   if(!localSnapshot||(!localSnapshot.entries.length&&!localSnapshot.cards.length))throw Error('Não há contas locais neste navegador. Exporte o backup no navegador onde você cadastrou as contas e importe aqui.');
+   if(!confirm('Copiar as contas locais deste navegador para sua conta online? Os dados locais serão preservados.')){cloudMessage='Importação cancelada.';return;}
+   db=await cloud.save(JSON.parse(JSON.stringify(localSnapshot)));cloudMessage='Contas locais copiadas para sua conta online.';render();
+  }
+ }catch(error){cloudMessage=error.message;cloudError=true;}
+ finally{password='';button.disabled=false;showAccountMessage();updateCloudStatus();}
+}
+function showAccountMessage(){const node=$('#cloud-message');if(node){node.textContent=cloudMessage;node.className=cloudError?'form-error':'hint';}}
+$('#open-account').onclick=()=>{tab='account';render();};
+$('#content').addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target.closest('#login-form')){event.preventDefault();$('#content [data-cloud="login"]')?.click();}});
+async function refreshCloud(){if(!cloud?.connected||cloud.busy||document.hidden||document.querySelector('dialog[open]')||tab==='account')return;try{await cloud.refresh();cloudError=false;}catch(error){cloudMessage=error.message;cloudError=true;}updateCloudStatus();}
+setInterval(refreshCloud,20000);window.addEventListener('focus',refreshCloud);window.addEventListener('online',refreshCloud);
+storageReady.then(async()=>{
+ if(!cloud?.configured)await ensureSelection();localSnapshot=JSON.parse(JSON.stringify(db));
+ if(cloud){cloud.setValidator(valid);cloud.on(type=>{
+  if(type==='loaded'){db=cloud.document;cloudMessage='Dados atualizados da nuvem.';cloudError=false;if(!document.querySelector('dialog[open]'))render();}
+  if(type==='logout'){db=JSON.parse(JSON.stringify(localSnapshot||{version:1,entries:[],cards:[]}));tab='account';search='';render();}
+  updateCloudStatus();
+ });try{await cloud.boot();if(cloud.connected)await ensureSelection();}catch(error){cloudMessage=error.message;cloudError=true;}
+ }
+ if(cloud?.configured&&!cloud.connected)tab='account';render();updateCloudStatus();
+});
 
 let installPrompt=null;
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;if(tab==='install')render();});
