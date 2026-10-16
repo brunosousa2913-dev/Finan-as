@@ -2,7 +2,7 @@
 
 Sistema web responsivo em português para receitas, despesas, contas fixas, parcelas, cartões e faturas. Inclui login e sincronização entre aparelhos quando conectado a um projeto Supabase exclusivo das finanças.
 
-Para baixar, clique em **Code → Download ZIP** no GitHub e extraia a pasta. Para publicar/atualizar o site, use `financas-final-site.zip` e siga [PUBLICAR.md](PUBLICAR.md). Para ativar login, siga [CONFIGURAR-LOGIN.md](CONFIGURAR-LOGIN.md). A configuração pública distribuída começa vazia: login não funciona até conectar o projeto real.
+Para baixar, clique em **Code → Download ZIP** no GitHub e extraia a pasta. Para publicar/atualizar o site, use `financas-final-site.zip` e siga [PUBLICAR.md](PUBLICAR.md). Para ativar login, siga [CONFIGURAR-LOGIN.md](CONFIGURAR-LOGIN.md). A URL e a chave pública do projeto Meu Saldo estão configuradas em cloud-config.js. Para ativar o login, ainda é necessário executar o script SQL no projeto e configurar as URLs de autenticação antes de atualizar o site.
 
 ## Executar
 
