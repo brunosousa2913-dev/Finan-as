@@ -1,4 +1,4 @@
-# Meu saldo — finanças pessoais · versão 6.0
+# Meu saldo — finanças pessoais · versão 6.1
 
 Sistema web responsivo em português para receitas, despesas, contas fixas, parcelas, cartões e faturas. Inclui login e sincronização entre aparelhos quando conectado a um projeto Supabase exclusivo das finanças.
 
@@ -80,3 +80,15 @@ Consulte ADMINISTRADOR.md para a implantação obrigatória: execute `supabase/a
 O administrador pode listar/cadastrar usuários comuns, bloquear e desbloquear. Não pode bloquear a si mesmo ou outro administrador pela tela, nem consultar as finanças de outras pessoas. Bloqueio não apaga dados. Conteúdo já baixado não pode ser recolhido, mas novas consultas e gravações são negadas imediatamente pelo banco.
 
 Testes adicionais: `node tests/admin-function.cjs`, `node tests/admin-ui.cjs` (Playwright + servidor) e `node tests/admin-database.cjs` (PGlite). Os testes são locais; a função e a migração precisam ser ativadas e verificadas no projeto real.
+
+## Pagamentos e faturas (6.1)
+
+Nova movimentação separa Dinheiro, Débito, Pix, Crédito e Conta a pagar/a receber. Dinheiro/débito/Pix usam a data do pagamento e são confirmados como pagos (ou recebidos para entradas). Crédito exige cartão e usa a data da compra, entrando pendente na fatura calculada. Contas futuras mantêm vencimento e status; parcelas e repetições futuras não são marcadas como pagas antecipadamente.
+
+O cálculo usa o fechamento efetivo do mês (limitado ao último dia). Compras no dia do fechamento ou depois passam para o próximo fechamento. Se o vencimento for anterior ou igual ao dia nominal de fechamento, a fatura vence no mês seguinte ao fechamento. Parcelas avançam a partir da primeira fatura. Cartões existentes e registros antigos são preservados; novas compras usam a regra automática.
+
+Em Cartões e faturas, use Editar fatura/registrar pagamento para informar o total final e o total já pago. A diferença entre compras e total final fica registrada como encargos/descontos. Aumentar o pago acumulado cria uma saída apenas pela diferença, com data e forma de pagamento. Reduzir o valor corrige os pagamentos mais recentes. O restante aparece como fatura pendente no vencimento. Não há transferência automática de saldo para outra fatura.
+
+Compras permanecem registradas pelos valores originais. Pagamentos de fatura são lançamentos separados e não duplicam despesas realizadas. Ao ajustar pela primeira vez uma fatura antiga, compras que já estavam pagas são convertidas em pagamentos equivalentes, preservando datas. O check de uma compra no crédito abre a fatura para confirmar o valor efetivamente pago. O limite exibido é uma estimativa com base no saldo das faturas, incluindo ajustes.
+
+Novos campos ficam no mesmo documento JSON por usuário; esta atualização financeira não exige uma nova tabela. A ativação administrativa 6.0 continua obrigatória. Testes: `node tests/payment-methods.cjs` e `node tests/invoice-payments.cjs` com Playwright e o servidor em execução.
