@@ -172,6 +172,7 @@ function syncPayment(){const form=$('#entry-form'),method=form.elements.paymentM
  $('#card-field').hidden=!credit;form.elements.cardId.disabled=!credit;form.elements.cardId.required=credit;
  $('#invoice-field').hidden=!credit;form.elements.invoiceMonth.disabled=true;
  $('#status-field').hidden=method!=='pending';
+ form.elements.repeat.querySelector('[value=once]').textContent=credit?'À vista no crédito (uma fatura)':'Pagamento único / à vista';
  $('#entry-date-label').textContent=credit?'Data da compra':method==='pending'?'Data / vencimento':income?'Data do recebimento':'Data do pagamento';
  const card=db.cards.find(c=>c.id===form.elements.cardId.value);
  form.elements.invoiceMonth.value=credit&&card&&form.elements.date.value?invoiceFor(form.elements.date.value,card).invoiceMonth:'';
