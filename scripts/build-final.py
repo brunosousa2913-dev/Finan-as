@@ -11,7 +11,7 @@ html=re.sub(r'<link rel="(?:manifest|apple-touch-icon)"[^>]*>','',html)
 for name in ['financas-final.html','testar-financas.html','financas-v3-3.html']:
  Path('/workspace',name).write_text(html)
 Path('/workspace/financas-final-demo.html').write_text((root/'demo.html').read_text())
-files=['index.html','app.js','style.css','sw.js','manifest.webmanifest','PUBLICAR.md','cloud.js','cloud-config.js','CONFIGURAR-LOGIN.md','supabase/setup.sql']+[str(p.relative_to(root)) for p in sorted((root/'icons').glob('*.png'))]
+files=['index.html','app.js','style.css','sw.js','manifest.webmanifest','PUBLICAR.md','cloud.js','cloud-config.js','CONFIGURAR-LOGIN.md','supabase/setup.sql','ADMINISTRADOR.md','supabase/admin.sql','supabase/bootstrap-admin.sql','supabase/ativar-admin.sql','supabase/functions/manage-users/index.ts','supabase/config.toml']+[str(p.relative_to(root)) for p in sorted((root/'icons').glob('*.png'))]
 for target in ['financas-final-site.zip','financas-site.zip']:
  with ZipFile(Path('/workspace',target),'w',ZIP_DEFLATED) as archive:
   for name in files:archive.write(root/name,name)

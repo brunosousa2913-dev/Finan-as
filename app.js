@@ -1,6 +1,6 @@
 const $ = s => document.querySelector(s);
 const key = 'meu-saldo-v1';
-const cloud=window.FinanceCloud;let localSnapshot=null,cloudMessage='',cloudError=false;
+const cloud=window.FinanceCloud;let localSnapshot=null,cloudMessage='',cloudError=false,adminUsers=[],adminPage=0,adminHasMore=false,adminMessage='';
 // randomUUID is unavailable in some mobile browsers and HTTP contexts.
 function newId(){
  if(typeof globalThis.crypto?.randomUUID==='function')return globalThis.crypto.randomUUID();
@@ -74,12 +74,12 @@ function status(e){return e.status==='paid'?'<span class="badge">'+(e.type==='in
 function rows(entries){return entries.length?entries.map(e=>`<div class="row"><div><div class="row-title">${esc(e.description)}</div><small>${esc(e.category)} · ${dateLabel(e.date)}${e.cardId?' · '+esc(db.cards.find(c=>c.id===e.cardId)?.name||'Cartão'):''}</small></div><div class="row-right"><div class="${e.type==='income'?'positive':'red'}">${e.type==='income'?'+':'−'} ${money(e.amount)}</div><div style="margin-top:6px">${status(e)}</div><label class="paid-check"><input type="checkbox" data-paid="${esc(e.id)}" ${e.status==='paid'?'checked':''} aria-label="${e.type==='income'?'Recebido':'Pago'}: ${esc(e.description)}">${e.type==='income'?'Recebido':'Pago'}</label><div class="actions"><button data-edit="${esc(e.id)}">Editar</button><button data-delete="${esc(e.id)}" aria-label="Excluir ${esc(e.description)}">Excluir</button></div></div></div>`).join(''):empty('Nenhuma movimentação por aqui','Adicione suas receitas e despesas para começar.');}
 function panel(title,body,subtitle=''){return `<div class="panel"><div class="panel-head"><div><h2>${title}</h2>${subtitle?`<p>${subtitle}</p>`:''}</div></div>${body}</div>`;}
 function render(){
- const titles={overview:'Visão geral',transactions:'Movimentações',bills:'Contas e vencimentos',cards:'Cartões e faturas',backup:'Backup dos dados',fixed:'Contas fixas e parcelas',install:'Instalar no celular',account:'Minha conta e sincronização'};
+ const titles={overview:'Visão geral',transactions:'Movimentações',bills:'Contas e vencimentos',cards:'Cartões e faturas',backup:'Backup dos dados',fixed:'Contas fixas e parcelas',install:'Instalar no celular',account:'Minha conta e sincronização',users:'Administrar usuários'};
  $('#page-title').textContent=titles[tab];document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
  const entries=monthEntries(),income=sum(entries.filter(e=>e.type==='income'&&e.status==='paid')),expense=sum(entries.filter(e=>e.type==='expense'&&e.status==='paid')),pending=sum(entries.filter(e=>e.type==='expense'&&e.status==='pending'));
  let html='';
  if(cloud?.configured&&!cloud.connected&&!['account','install'].includes(tab)){html=panel('Entre e carregue sua conta','<p>Os registros locais estão preservados. Abra Minha conta para carregar seus dados online ou sair.</p>');$('#content').innerHTML=html;return;}
- if(tab==='account'){html=accountPanel();}else if(tab==='overview'){
+ if(tab==='account'){html=accountPanel();}else if(tab==='users'){html=usersPanel();}else if(tab==='overview'){
  html=`<div class="stats">${[['Saldo do período',income-expense,'Entradas recebidas menos saídas pagas'],['Entradas recebidas',income,'Receitas confirmadas no filtro'],['Saídas pagas',expense,'Despesas quitadas no filtro'],['Contas a pagar',pending,'Despesas pendentes no filtro']].map(([t,v,s])=>`<div class="stat"><div class="stat-label">${t}</div><strong>${money(v)}</strong><small>${s}</small></div>`).join('')}</div>`;
  const categories=Object.create(null);entries.filter(e=>e.type==='expense').forEach(e=>categories[e.category]=(categories[e.category]||0)+e.amount);const total=Object.values(categories).reduce((a,b)=>a+b,0);
  html+=`<div class="dashboard-grid"><div>${panel('Últimas movimentações',rows([...entries].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5)),'Acompanhe o que entrou e saiu')}${panel('Próximos vencimentos',rows(entries.filter(e=>e.status==='pending').sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3)),'Contas a pagar e valores a receber')}</div><div>${panel('Despesas por categoria',Object.keys(categories).length?Object.entries(categories).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div class="category-row"><div><span>${esc(c)}</span><b>${money(v)}</b></div><div class="progress"><div style="width:${v/total*100}%"></div></div></div>`).join(''):empty('Tudo começa com um registro','As categorias aparecerão aqui.'),'Inclui despesas pagas e pendentes')}<div class="welcome"><span>✧</span><div><b>Pequenos hábitos, grandes planos.</b><p>Registre seus gastos e acompanhe sua evolução todos os meses.</p></div></div></div></div>`;
@@ -109,7 +109,7 @@ $('#new-entry').onclick=()=>openEntry();document.querySelectorAll('.close').forE
 $('#month').onchange=()=>{if(!$('#month').value)$('#month').value=today().slice(0,7);applyDates();};
 $('#date-mode').onchange=()=>{const month=$('#month').value;if(!$('#filter-day').value)$('#filter-day').value=month+'-01';if(!$('#filter-start').value)$('#filter-start').value=month+'-01';if(!$('#filter-end').value)$('#filter-end').value=shiftedDate(month+'-31',0);updateDateFields();applyDates();};
 for(const id of ['filter-day','filter-start','filter-end'])document.getElementById(id).onchange=applyDates;
-document.querySelector('nav').onclick=e=>{const b=e.target.closest('[data-tab]');if(b){tab=b.dataset.tab;search='';filter='all';render();}};
+document.querySelector('nav').onclick=e=>{const b=e.target.closest('[data-tab]');if(b){tab=b.dataset.tab;search='';filter='all';render();if(tab==='users')loadUsers();}};
 $('#entry-form').elements.repeat.onchange=e=>{$('#installment-field').hidden=e.target.value!=='installments';};
 async function saveEntry(form){if(!checkForm(form))return;const button=form.querySelector('#save-entry');button.disabled=true;
  try{await storageReady;const data=Object.fromEntries(new FormData(form));const repeat=data.repeat||'once',count=Number(data.installments);delete data.repeat;delete data.installments;const custom=(data.customCategory||'').trim().normalize('NFC');delete data.customCategory;if(data.category==='Outros'&&custom){data.category=[...allCategories(),'Outros'].find(c=>categoryKey(c)===categoryKey(custom))||custom;}const previous=db.entries.find(x=>x.id===data.id);data.id=data.id||newId();data.amount=Number(data.amount);data.invoiceMonth=data.invoiceMonth||data.date.slice(0,7);if(previous)for(const k of ['scheduleId','installmentGroup'])if(previous[k])data[k]=previous[k];
@@ -134,7 +134,7 @@ $('#content').addEventListener('input',e=>{if(e.target.id==='search'){const star
 $('#content').addEventListener('change',async e=>{
  if(e.target.matches('[data-paid]')){const box=e.target,previous=!box.checked;box.disabled=true;const next={...db,entries:db.entries.map(x=>x.id===box.dataset.paid?{...x,status:box.checked?'paid':'pending'}:x)};if(await persist(next)){render();toast(box.checked?'Pagamento confirmado':'Marcado como pendente');}else{box.checked=previous;box.disabled=false;}return;}
 if(e.target.id==='filter'){filter=e.target.value;render();}if(e.target.id==='import'){const file=e.target.files[0];if(!file)return;try{if(file.size>5e6)throw Error();const data=JSON.parse(await file.text());if(!valid(data))throw Error();if(confirm('Importar este backup substituirá todos os dados atuais. Deseja continuar?')&&await persist(data)){await ensureSelection();render();toast('Backup importado');}}catch{alert('Backup inválido. Selecione um arquivo JSON exportado pelo Meu saldo (até 5 MB).');}e.target.value='';}});
-$('#content').onclick=async e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.cloud){await accountAction(b);return;}let next;
+$('#content').onclick=async e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.admin){await adminAction(b);return;}if(b.dataset.cloud){await accountAction(b);return;}let next;
  if(b.id==='install-app'&&installPrompt){await installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;render();}
  if(b.id==='add-fixed'){openEntry();$('#entry-form').elements.repeat.value='monthly';$('#entry-form').elements.status.value='pending';}
  if(b.dataset.stop&&confirm('Encerrar esta conta fixa? Os vencimentos já gerados serão mantidos.'))next={...db,schedules:(db.schedules||[]).map(s=>s.id===b.dataset.stop?{...s,active:false}:s)};
@@ -148,7 +148,7 @@ $('#content').onclick=async e=>{const b=e.target.closest('button');if(!b)return;
  if(next&&await persist(next)){render();toast('Alteração salva');}
 };
 function updateCloudStatus(){
- const status=$('#cloud-status');if(!status)return;$('#new-entry').disabled=!!cloud?.configured&&!cloud.connected;
+ const status=$('#cloud-status');if(!status)return;$('#users-nav').hidden=!cloud?.isAdmin;$('#new-entry').disabled=!!cloud?.configured&&!cloud.connected;
  status.textContent=cloud?.signedIn?(cloud.busy?'Sincronizando…':cloudError?'Sincronização pendente — abra Minha conta':cloud.connected?'Conectado: '+(cloud.user?.email||'sua conta'):'Conta conectada — aguardando carregar dados'):'Dados locais neste navegador';
  status.classList.toggle('sync-error',cloudError);
 }
@@ -156,17 +156,31 @@ function accountPanel(){
  if(!cloud?.configured)return panel('Conecte sua conta',`<p>Login e sincronização precisam ser ativados no projeto Supabase. Os registros locais continuam disponíveis.</p><p>Depois da configuração, entre com o mesmo e-mail no computador e no celular. Use a conta exclusiva deste sistema de finanças.</p><p class="hint">O responsável pelo site deve seguir CONFIGURAR-LOGIN.md e publicar cloud-config.js com a URL e a chave pública do projeto. Nenhuma senha de banco de dados deve ser colocada no site.</p>`);
  const message=`<p id="cloud-message" class="${cloudError?'form-error':'hint'}" role="status">${esc(cloudMessage)}</p>`;
  if(cloud.signedIn){return panel('Sua conta',`<p>Conectado como <b>${esc(cloud.user.email)}</b></p>${message}<div class="account-actions"><button data-cloud="refresh">Atualizar da nuvem</button><button data-cloud="logout">Sair da conta</button></div>${cloud.recovery?'<form id="recovery-form"><label>Nova senha<input type="password" name="newPassword" autocomplete="new-password" minlength="12" required></label><button type="button" data-cloud="password">Salvar nova senha</button></form>':''}<h3 style="margin-top:24px">Contas que já estavam neste navegador</h3><p class="hint">Os dados locais anteriores foram preservados. Para colocá-los na conta, exporte uma cópia e use o botão abaixo. Ele só permite importar para uma conta online vazia. Se já houver dados online, use o backup e revise antes de substituir.</p><button data-cloud="migrate">Levar minhas contas locais para a nuvem</button><p class="hint">A atualização acontece ao salvar, ao voltar para o site e a cada 20 segundos enquanto nenhuma edição está aberta. Alterações simultâneas são bloqueadas para evitar sobrescrever outro aparelho. Com a conta conectada é necessário estar online para confirmar mudanças.</p>`);}
- return panel('Entre para usar suas contas em vários aparelhos',`<p>Use o mesmo e-mail e senha no computador, Android e iPhone. Cada usuário acessa apenas as próprias finanças.</p><form id="login-form" novalidate><label>E-mail<input type="email" name="email" autocomplete="username" required></label><label>Senha<input type="password" name="password" autocomplete="current-password"></label>${message}<div class="account-actions"><button type="button" class="primary" data-cloud="login">Entrar</button><button type="button" data-cloud="signup">Criar conta</button><button type="button" data-cloud="reset">Esqueci minha senha</button></div><p class="hint">Para criar uma conta, use uma senha de pelo menos 12 caracteres e confirme seu e-mail. As contas deste sistema são independentes do ML Controle.</p></form>`);
+ return panel('Entre para usar suas contas em vários aparelhos',`<p>Use o mesmo e-mail e senha no computador, Android e iPhone. Cada usuário acessa apenas as próprias finanças.</p><form id="login-form" novalidate><label>E-mail<input type="email" name="email" autocomplete="username" required></label><label>Senha<input type="password" name="password" autocomplete="current-password"></label>${message}<div class="account-actions"><button type="button" class="primary" data-cloud="login">Entrar</button><button type="button" data-cloud="reset">Esqueci minha senha</button></div><p class="hint">O acesso é cadastrado pelo administrador. Solicite seu usuário ao responsável. Use o mesmo e-mail e senha em todos os aparelhos.</p></form>`);
+}
+function usersPanel(){
+ if(!cloud?.isAdmin)return panel('Acesso restrito','<p>Somente o administrador pode gerenciar usuários.</p>');
+ const list=adminUsers.map(u=>`<div class="row"><div><b>${esc(u.name||u.email)}</b><small>${esc(u.email)} · ${u.role==='admin'?'Administrador':'Usuário'} · ${u.active?'Ativo':'Bloqueado / pendente'}</small></div>${u.role==='admin'?'<span class="badge">Administrador</span>':`<button type="button" data-admin="toggle" data-user="${esc(u.user_id)}" data-active="${u.active?'false':'true'}">${u.active?'Bloquear':'Desbloquear'}</button>`}</div>`).join('');
+ return panel('Cadastrar usuário',`<p>Somente você, como administrador, pode cadastrar e liberar acessos. Cada pessoa vê apenas as próprias finanças.</p><form id="admin-create" novalidate><div class="form-grid"><label>Nome<input name="name" maxlength="100" autocomplete="off" required></label><label>E-mail<input type="email" name="email" maxlength="254" autocomplete="off" required></label><label>Senha inicial<input type="password" name="password" minlength="12" maxlength="128" autocomplete="new-password" required></label></div><p class="hint">Use uma senha inicial forte de pelo menos 12 caracteres. Envie o acesso por um canal seguro. O usuário pode usar Esqueci minha senha para definir outra.</p><div class="form-error" role="alert"></div><button type="button" class="primary" data-admin="create">Cadastrar e liberar</button></form>`)+panel('Usuários cadastrados',`<p id="admin-message" role="status">${esc(adminMessage)}</p><button type="button" data-admin="reload">Atualizar lista</button>${list||empty('Nenhum usuário nesta página')}<div class="account-actions"><button data-admin="prev" ${adminPage===0?'disabled':''}>Anterior</button><span>Página ${adminPage+1}</span><button data-admin="next" ${adminHasMore?'':'disabled'}>Próxima</button></div><p class="hint">Bloquear impede novas leituras e alterações das finanças. Desbloquear restaura o acesso sem apagar os registros. O acesso de administradores não pode ser bloqueado nesta tela.</p>`);
+}
+async function loadUsers(){if(!cloud?.isAdmin)return;adminMessage='Carregando…';try{const result=await cloud.listUsers(adminPage);if(!Array.isArray(result.users))throw Error('Resposta administrativa inválida.');adminUsers=result.users;adminHasMore=!!result.hasMore;adminMessage='';}catch(error){adminUsers=[];adminMessage=error.message;}if(tab==='users')render();}
+async function adminAction(button){if(!cloud?.isAdmin)return;const action=button.dataset.admin;
+ if(['reload','prev','next'].includes(action)){if(action==='prev')adminPage=Math.max(0,adminPage-1);if(action==='next')adminPage++;await loadUsers();return;}
+ button.disabled=true;
+ try{
+  if(action==='create'){const form=button.closest('form');if(!checkForm(form))return;const values=Object.fromEntries(new FormData(form));const result=await cloud.createUser(values.name.trim(),values.email.trim(),values.password);form.reset();adminMessage=result.message;const message=adminMessage;adminPage=0;await loadUsers();adminMessage=message;render();}
+  if(action==='toggle'){const active=button.dataset.active==='true';if(!confirm(active?'Desbloquear o acesso deste usuário?':'Bloquear o acesso deste usuário? Os dados serão preservados.'))return;const result=await cloud.setUserActive(button.dataset.user,active);const message=result.message;await loadUsers();adminMessage=message;render();}
+ }catch(error){if(action==='create')formError(button.closest('form'),error.message);else{adminMessage=error.message;const node=$('#admin-message');if(node)node.textContent=adminMessage;}}
+ finally{button.disabled=false;}
 }
 async function accountAction(button){
  const action=button.dataset.cloud,form=button.closest('form');
  let email=form?.elements.email?.value.trim(),password=form?.elements.password?.value;
- if(['login','signup','reset'].includes(action)){if(!form.elements.email.checkValidity()){cloudMessage='Informe um e-mail válido.';cloudError=true;showAccountMessage();return;}if(action!=='reset'&&!password){cloudMessage='Informe sua senha.';cloudError=true;showAccountMessage();return;}if(action==='signup'&&password.length<12){cloudMessage='Use uma senha de pelo menos 12 caracteres.';cloudError=true;showAccountMessage();return;}}
+ if(['login','reset'].includes(action)){if(!form.elements.email.checkValidity()){cloudMessage='Informe um e-mail válido.';cloudError=true;showAccountMessage();return;}if(action!=='reset'&&!password){cloudMessage='Informe sua senha.';cloudError=true;showAccountMessage();return;}}
  if(action==='password'&&!form.reportValidity())return;
  button.disabled=true;cloudMessage='Aguarde…';cloudError=false;showAccountMessage();
  try{
   if(action==='login'){await cloud.login(email,password);await ensureSelection();render();}
-  if(action==='signup')cloudMessage=await cloud.signup(email,password);
   if(action==='reset')cloudMessage=await cloud.reset(email);
   if(action==='password'){await cloud.password(form.elements.newPassword.value);cloudMessage='Senha atualizada.';render();}
   if(action==='refresh'){await cloud.refresh();await ensureSelection();render();}
@@ -183,14 +197,16 @@ async function accountAction(button){
 }
 function showAccountMessage(){const node=$('#cloud-message');if(node){node.textContent=cloudMessage;node.className=cloudError?'form-error':'hint';}}
 $('#open-account').onclick=()=>{tab='account';render();};
-$('#content').addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target.closest('#login-form')){event.preventDefault();$('#content [data-cloud="login"]')?.click();}});
+$('#content').addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target.closest('#admin-create')){event.preventDefault();$('#content [data-admin="create"]')?.click();return;}if(event.key==='Enter'&&event.target.closest('#login-form')){event.preventDefault();$('#content [data-cloud="login"]')?.click();}});
 async function refreshCloud(){if(!cloud?.connected||cloud.busy||document.hidden||document.querySelector('dialog[open]')||tab==='account')return;try{await cloud.refresh();cloudError=false;}catch(error){cloudMessage=error.message;cloudError=true;}updateCloudStatus();}
 setInterval(refreshCloud,20000);window.addEventListener('focus',refreshCloud);window.addEventListener('online',refreshCloud);
 storageReady.then(async()=>{
  if(!cloud?.configured)await ensureSelection();localSnapshot=JSON.parse(JSON.stringify(db));
  if(cloud){cloud.setValidator(valid);cloud.on(type=>{
+  if(type==='access'&&!cloud.isAdmin){adminUsers=[];if(tab==='users'){tab='account';render();}}
+  if(type==='blocked'){db={version:1,entries:[],cards:[]};adminUsers=[];document.querySelectorAll('dialog[open]').forEach(d=>d.close());tab='account';cloudError=true;cloudMessage='Seu acesso está bloqueado ou aguardando liberação do administrador.';render();}
   if(type==='loaded'){db=cloud.document;cloudMessage='Dados atualizados da nuvem.';cloudError=false;if(!document.querySelector('dialog[open]'))render();}
-  if(type==='logout'){db=JSON.parse(JSON.stringify(localSnapshot||{version:1,entries:[],cards:[]}));tab='account';search='';render();}
+  if(type==='logout'){adminUsers=[];db=JSON.parse(JSON.stringify(localSnapshot||{version:1,entries:[],cards:[]}));tab='account';search='';render();}
   updateCloudStatus();
  });try{await cloud.boot();if(cloud.connected)await ensureSelection();}catch(error){cloudMessage=error.message;cloudError=true;}
  }

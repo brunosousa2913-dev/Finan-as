@@ -1,6 +1,8 @@
-# Meu saldo — versão 5.0
+# Meu saldo — versão 6.0
 
 ## Login e sincronização
+
+Antes de publicar esta atualização, siga **ADMINISTRADOR.md**: confirme a conta administrativa, execute `supabase/ativar-admin.sql` e publique a Edge Function `manage-users`. A nova versão nega acesso a usuários sem permissão ativa e não exibe cadastro público.
 
 Para usuários independentes do ML Controle, crie um projeto Supabase exclusivo das finanças e siga **CONFIGURAR-LOGIN.md**. O código sem configuração continua em modo local. Para compartilhar as mesmas finanças entre aparelhos, o projeto real precisa estar configurado, com a tabela e as políticas do script `supabase/setup.sql`.
 

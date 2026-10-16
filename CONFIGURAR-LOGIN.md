@@ -1,6 +1,6 @@
-# Login e sincronização — versão 5.0
+# Login e sincronização — versão 6.0
 
-A aplicação usa Supabase Auth para e-mail/senha e uma tabela PostgreSQL com isolamento por usuário. Sem configuração, o modo local continua funcionando. Login não é ativado apenas publicando o código.
+A aplicação usa Supabase Auth para e-mail/senha e uma tabela PostgreSQL com isolamento por usuário. Sem configuração, o modo local continua funcionando. Login não é ativado apenas publicando o código. Na versão 6.0, também siga ADMINISTRADOR.md para configurar as permissões e a função de servidor antes de publicar a atualização.
 
 ## 1. Crie um projeto exclusivo para as finanças
 
@@ -30,7 +30,7 @@ Esses dois valores são públicos e ficam no navegador. Nunca coloque `service_r
 
 Em **Authentication → URL Configuration → Redirect URLs**, acrescente o endereço HTTPS deste site (incluindo o caminho de acesso, normalmente `/`). Defina **Site URL** como o endereço publicado das finanças e inclua a mesma URL nas Redirect URLs. Não altere as configurações do projeto ML Controle. O cadastro e a recuperação informam a URL desta aplicação como destino.
 
-Mantenha confirmação de e-mail ativada e configure o envio de e-mails conforme as regras do seu projeto (o remetente padrão do Supabase pode ter restrições). Cada pessoa deve criar uma conta neste projeto de finanças. Em cada dispositivo, ela entra com o mesmo e-mail e senha dessa conta. Contas do ML Controle não dão acesso ao projeto novo.
+Mantenha confirmação de e-mail ativada e configure o envio de e-mails conforme as regras do seu projeto (o remetente padrão do Supabase pode ter restrições). O administrador cadastra cada pessoa pela tela Administrar usuários, depois de concluir ADMINISTRADOR.md. Desative Allow new users to sign up no Auth para impedir cadastros livres. Em cada dispositivo, ela entra com o mesmo e-mail e senha dessa conta. Contas do ML Controle não dão acesso ao projeto novo.
 
 ## 4. Atualize a hospedagem
 

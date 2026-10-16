@@ -1,0 +1,3 @@
+# O handler valida o token no Supabase Auth e o papel ativo no banco.
+[functions.manage-users]
+verify_jwt = false

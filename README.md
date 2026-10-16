@@ -1,8 +1,8 @@
-# Meu saldo — finanças pessoais · versão 5.0
+# Meu saldo — finanças pessoais · versão 6.0
 
 Sistema web responsivo em português para receitas, despesas, contas fixas, parcelas, cartões e faturas. Inclui login e sincronização entre aparelhos quando conectado a um projeto Supabase exclusivo das finanças.
 
-Para baixar, clique em **Code → Download ZIP** no GitHub e extraia a pasta. Para publicar/atualizar o site, use `financas-final-site.zip` e siga [PUBLICAR.md](PUBLICAR.md). Para ativar login, siga [CONFIGURAR-LOGIN.md](CONFIGURAR-LOGIN.md). A URL e a chave pública do projeto Meu Saldo estão configuradas em cloud-config.js. Para ativar o login, ainda é necessário executar o script SQL no projeto e configurar as URLs de autenticação antes de atualizar o site.
+Para baixar, clique em **Code → Download ZIP** no GitHub e extraia a pasta. Para publicar/atualizar o site, use `financas-final-site.zip` e siga [PUBLICAR.md](PUBLICAR.md). Para configurar o login e a administração, siga [CONFIGURAR-LOGIN.md](CONFIGURAR-LOGIN.md) e [ADMINISTRADOR.md](ADMINISTRADOR.md). A URL e a chave pública do projeto Meu Saldo estão configuradas em cloud-config.js. Para ativar o login, ainda é necessário executar os scripts SQL e publicar a função manage-users no projeto antes de atualizar o site.
 
 ## Executar
 
@@ -25,13 +25,14 @@ A porta padrão é 3000, configurável com `PORT`. A aplicação também pode se
 - Dez cores sem verde, com preferência por aparelho.
 - Backup JSON com validação e confirmação antes de substituir registros.
 - Manifesto, ícones, instalação na tela inicial e uso local offline após a primeira visita.
-- Login, cadastro com confirmação de e-mail, recuperação de senha, migração local e sincronização com Supabase.
+- Login, recuperação de senha, migração local e sincronização com Supabase.
+- Administração de usuários: cadastro restrito ao administrador, bloqueio/desbloqueio com preservação das finanças. Sem cadastro público na interface.
 
 ## Login e dados em vários aparelhos
 
 Use um **projeto Supabase exclusivo** para ter usuários separados do ML Controle. Execute `supabase/setup.sql`, preencha `cloud-config.js` apenas com a URL e a chave pública publishable/anon, configure as URLs de autenticação e atualize a hospedagem. Nunca publique senhas, secret keys ou service_role.
 
-No modo configurado, o usuário deve entrar para acessar as finanças. Cada usuário lê apenas sua linha, protegida por RLS. Escritas passam por uma função que verifica `auth.uid()` e a revisão. Computador e celular usam o mesmo e-mail e senha da conta de finanças. A atualização ocorre ao salvar, ao voltar à janela e a cada 20 segundos sem edição modal aberta.
+No modo configurado, o usuário deve entrar para acessar as finanças. Cada usuário ativo lê apenas sua linha, protegida por RLS. O banco recusa contas bloqueadas ou pendentes, inclusive com JWT válido. O papel de administrador vem do banco, nunca de dados enviados pelo cliente. Escritas passam por uma função que verifica `auth.uid()` e a revisão. Computador e celular usam o mesmo e-mail e senha da conta de finanças. A atualização ocorre ao salvar, ao voltar à janela e a cada 20 segundos sem edição modal aberta.
 
 Conflitos entre aparelhos não são mesclados silenciosamente: o banco recusa uma versão antiga, mantém o formulário e orienta atualizar os dados antes de tentar novamente. A gravação online precisa de internet e confirmação do servidor. Não existe fila de alterações offline.
 
@@ -71,3 +72,11 @@ node tests/cloud-database.cjs
 ```
 
 Os testes locais não confirmam e-mail, políticas e conectividade no projeto Supabase real. A ativação requer configurar e testar esse projeto. Não foi realizada instalação em aparelhos físicos ou publicação do novo pacote em hospedagem externa.
+
+## Administrador e usuários (6.0)
+
+Consulte ADMINISTRADOR.md para a implantação obrigatória: execute `supabase/ativar-admin.sql` depois de criar a conta inicial indicada, publique `supabase/functions/manage-users/index.ts` como Edge Function **manage-users**, desative novos cadastros no Auth e atualize o Netlify. A tabela de acesso começa pendente por padrão, sem autoeleição de administrador. A função valida o token no Auth e consulta o administrador ativo no banco antes de qualquer ação. A chave service_role permanece exclusivamente no ambiente de servidor do Supabase.
+
+O administrador pode listar/cadastrar usuários comuns, bloquear e desbloquear. Não pode bloquear a si mesmo ou outro administrador pela tela, nem consultar as finanças de outras pessoas. Bloqueio não apaga dados. Conteúdo já baixado não pode ser recolhido, mas novas consultas e gravações são negadas imediatamente pelo banco.
+
+Testes adicionais: `node tests/admin-function.cjs`, `node tests/admin-ui.cjs` (Playwright + servidor) e `node tests/admin-database.cjs` (PGlite). Os testes são locais; a função e a migração precisam ser ativadas e verificadas no projeto real.

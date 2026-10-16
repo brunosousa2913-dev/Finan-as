@@ -13,8 +13,20 @@ create table if not exists public.meu_saldo_accounts (
 alter table public.meu_saldo_accounts enable row level security;
 revoke all on public.meu_saldo_accounts from anon, authenticated;
 grant select on public.meu_saldo_accounts to authenticated;
+-- Preserva o bloqueio administrativo mesmo se a instalação inicial for repetida.
+create or replace function public.meu_saldo_has_access() returns boolean
+language plpgsql stable security definer set search_path='' as $$
+declare allowed boolean;
+begin
+ if auth.uid() is null then return false; end if;
+ if to_regclass('public.meu_saldo_members') is null then return true; end if;
+ execute 'select exists(select 1 from public.meu_saldo_members where user_id=$1 and active)' into allowed using auth.uid();
+ return allowed;
+end $$;
+revoke all on function public.meu_saldo_has_access() from public,anon;
+grant execute on function public.meu_saldo_has_access() to authenticated;
 drop policy if exists meu_saldo_read_own on public.meu_saldo_accounts;
-create policy meu_saldo_read_own on public.meu_saldo_accounts for select to authenticated using ((select auth.uid()) = user_id);
+create policy meu_saldo_read_own on public.meu_saldo_accounts for select to authenticated using ((select auth.uid()) = user_id and (select public.meu_saldo_has_access()));
 -- Escritas são feitas apenas pela função abaixo, com controle de versão atômico.
 create or replace function public.save_meu_saldo(p_document jsonb, p_expected_revision bigint)
 returns table(document jsonb, revision bigint)
@@ -22,6 +34,7 @@ language plpgsql security definer set search_path = '' as $$
 declare v_user uuid := auth.uid();
 begin
  if v_user is null then raise exception 'authentication_required' using errcode='42501'; end if;
+ if not public.meu_saldo_has_access() then raise exception 'access_blocked' using errcode='42501'; end if;
  if p_document is null or octet_length(p_document::text)>5242880
  or p_document->>'version' is distinct from '1'
  or jsonb_typeof(p_document->'entries') is distinct from 'array'

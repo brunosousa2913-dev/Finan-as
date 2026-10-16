@@ -8,7 +8,7 @@ const { chromium } = require('playwright');
   const url=process.env.TEST_URL || 'http://127.0.0.1:3000';
   for (const allowStorage of [true,false]) {
    const context=await browser.newContext({viewport:{width:1440,height:1200}});
-   const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.stack));
+   await context.route('**/cloud-config.js',r=>r.fulfill({contentType:'text/javascript',body:'window.FINANCE_CLOUD_CONFIG={};'}));const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.stack));
    await page.goto(url,{waitUntil:'domcontentloaded'});
    await page.locator('.stats').waitFor();
    await page.setContent(`<iframe sandbox="allow-scripts${allowStorage?' allow-same-origin':''}" src="${url}" style="width:100%;height:1000px"></iframe>`,{waitUntil:'domcontentloaded'});
