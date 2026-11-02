@@ -1,4 +1,8 @@
-# Meu saldo — versão 6.0
+# Meu saldo — versão 7.0.2
+
+## Atualização 7.0.2
+
+A consulta automática por intervalo, foco da janela e retorno da conexão foi removida. Os dados são carregados ao abrir/recarregar a página ou pelo botão **Atualizar da nuvem** em Minha conta. Alterações continuam sendo salvas na conta ao confirmar. Atualizar a lista de usuários preserva o cadastro em andamento.
 
 ## Login e sincronização
 
